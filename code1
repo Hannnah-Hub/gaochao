@@ -1,0 +1,89 @@
+// 定义接口引脚
+#define SDI_PIN   3   // 数据输入引脚 (SDI)
+#define CLK_PIN   4   // 时钟引脚 (CLK)
+#define LE_PIN    5   // 锁存引脚 (LE)
+#define OE_PIN    6   // 输出使能引脚 (OE)
+
+// 初始倒计时秒数为 720 秒
+int totalSeconds = 720;
+
+void setup() {
+  // 初始化引脚为输出模式
+  pinMode(SDI_PIN, OUTPUT);
+  pinMode(CLK_PIN, OUTPUT);
+  pinMode(LE_PIN, OUTPUT);
+  pinMode(OE_PIN, OUTPUT);
+  
+  // 启动显示
+  digitalWrite(OE_PIN, LOW);  // 打开显示屏输出
+}
+
+void loop() {
+  // 每秒钟更新一次显示
+  displayTime(totalSeconds);
+  delay(1000);  // 每秒更新一次
+  
+  // 倒计时每秒减少1秒
+  if (totalSeconds > 0) {
+    totalSeconds--;  // 每秒减去1秒
+  }
+}
+
+void sendByte(byte data) {
+  // 发送一个字节（8 位）到显示屏
+  for (int i = 7; i >= 0; i--) {
+    // 将数据的每一位传送到显示屏
+    digitalWrite(CLK_PIN, LOW);  // 设置时钟信号为低
+    digitalWrite(SDI_PIN, (data >> i) & 0x01);  // 发送每一位
+    digitalWrite(CLK_PIN, HIGH);  // 设置时钟信号为高
+  }
+}
+
+void latchData() {
+  // 锁存数据
+  digitalWrite(LE_PIN, HIGH);  // 锁存数据
+  delayMicroseconds(10);       // 短暂延时
+  digitalWrite(LE_PIN, LOW);   // 结束锁存
+}
+
+void displayTime(int totalSeconds) {
+  // 将总秒数转换为小时和分钟
+  int minutes = totalSeconds / 60;  // 计算分钟数
+  int seconds = totalSeconds % 60;  // 计算剩余的秒数
+  
+  // 将分钟和秒钟分解成十位和个位数字
+  int minuteTens = minutes / 10;    // 分钟十位
+  int minuteOnes = minutes % 10;    // 分钟个位
+  int secondTens = seconds / 10;    // 秒钟十位
+  int secondOnes = seconds % 10;    // 秒钟个位
+
+  // 显示分钟十位
+  displayNumber(minuteTens, 0);
+  // 显示分钟个位
+  displayNumber(minuteOnes, 1);
+  
+  // 显示秒钟十位
+  displayNumber(secondTens, 2);
+  // 显示秒钟个位
+  displayNumber(secondOnes, 3);
+}
+
+void displayNumber(int number, int position) {
+  // 根据显示位置显示一个数字（0-9）
+  byte numberPatterns[] = {
+    0x3F,  // 0
+    0x06,  // 1
+    0x5B,  // 2
+    0x4F,  // 3
+    0x66,  // 4
+    0x6D,  // 5
+    0x7D,  // 6
+    0x07,  // 7
+    0x7F,  // 8
+    0x6F   // 9
+  };
+
+  // 选择数字并发送数据
+  sendByte(numberPatterns[number]);
+  latchData();  // 锁存数据到显示屏
+}
